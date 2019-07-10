@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 // Allgemeine Informationen über eine Assembly werden über die folgenden
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die einer Assembly zugeordnet sind.
-[assembly: AssemblyTitle("AutoITApi")]
-[assembly: AssemblyDescription(".NET AutoIT Api Implmentation")]
+[assembly: AssemblyTitle("AutoItApiTest")]
+[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Dipl.-Ing.(FH) Guido Agnesmeyer")]
-[assembly: AssemblyProduct("AutoITApi")]
-[assembly: AssemblyCopyright("Copyright ©  2019 Dipl.-Ing.(FH) Guido Agnesmeyer")]
-[assembly: AssemblyTrademark("AutoITApi")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("AutoItApiTest")]
+[assembly: AssemblyCopyright("Copyright ©  2019")]
+[assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
 // Durch Festlegen von ComVisible auf FALSE werden die Typen in dieser Assembly
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // Die folgende GUID bestimmt die ID der Typbibliothek, wenn dieses Projekt für COM verfügbar gemacht wird
-[assembly: Guid("3ea4e618-526d-4b05-aee9-bc535ffecbcd")]
+[assembly: Guid("ab8cdfc6-fa22-4d36-b4ee-70bbd663960e")]
 
 // Versionsinformationen für eine Assembly bestehen aus den folgenden vier Werten:
 //
@@ -30,7 +30,7 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 // Sie können alle Werte angeben oder Standardwerte für die Build- und Revisionsnummern verwenden,
-// indem Sie "*" wie unten gezeigt eingeben:
+// übernehmen, indem Sie "*" eingeben:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
