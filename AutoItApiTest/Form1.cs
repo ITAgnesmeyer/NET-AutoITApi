@@ -24,17 +24,40 @@ namespace AutoItApiTest
             int retVal = AutoIt.Run("notepad.exe", "",ShowWindowCommands.SW_MAXIMIZE);
             if (retVal != 0)
                 Debug.Print(retVal.ToString());
-            AutoIt.WinWaitActive("Unbenannt","");
-            IntPtr winHandle = AutoIt.WinGetHandle("Unbenannt", "");
+            //AutoIt.WinWaitActive("Unbenannt","");
+
+            string[] tTitles = AutoIt.GetThreadWindowClasses(retVal);
+
+            
+            //IntPtr winHandle = AutoIt.WinGetHandle("Unbenannt", "");
+            IntPtr winHandle = AutoIt.GetHandleByClassName(tTitles.First());
+            string buff = new string('\0', 256);
+            AutoIt.WinGetTitleByHandle(winHandle, buff, buff.Length);
+
+            AutoIt.WinWaitActive(buff,"");
+
             AutoIt.Send("I'm in notepad");
+            AutoIt.Send(Environment.NewLine);
+            foreach (string tTitle in tTitles)
+            {
+                AutoIt.Send(tTitle + Environment.NewLine);
+            }
+
+            AutoIt.Send("{CTRLDOWN}");
+            AutoIt.Send("S");
+            AutoIt.Send("{CTRLUP}");
+            AutoIt.Sleep(5000);
+            //IntPtr saveHandle = AutoIt.GetActiveThreadWindow(retVal);
+            AutoIt.Send("a.txt");
+            AutoIt.Send(Environment.NewLine);
             //AutoIt.AU3_Sleep(1000);
-            string x = new string(' ',1000);
+            string x = new string('\0',1000);
             AutoIt.WinGetClassListByHandle(winHandle, x, 1000);
             Debug.Print(x);
            retVal = AutoIt.WinCloseByHandle(winHandle);
            if (retVal != 0)
                Debug.Print(retVal.ToString());
-           winHandle = AutoIt.WinGetHandle("Editor", "");
+           winHandle = AutoIt.GetActiveProcessWindow(retVal); //AutoIt.WinGetHandle("Editor", "");
            
            IntPtr ctrlHandle = AutoIt.ControlGetHandle(winHandle, "Button2");
            AutoIt.ControlGetPosByHandle(winHandle, ctrlHandle, out Rect o);

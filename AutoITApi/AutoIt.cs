@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace AutoITApi
 {
@@ -10,6 +13,102 @@ namespace AutoITApi
 #else
         private const string DllFile = "AutoItX3.dll";
 #endif
+
+        //inner enum used only internally
+        [Flags]
+        private enum SnapshotFlags : uint
+        {
+            HeapList = 0x00000001,
+            Process = 0x00000002,
+            Thread = 0x00000004,
+            Module = 0x00000008,
+            Module32 = 0x00000010,
+            Inherit = 0x80000000,
+            All = 0x0000001F,
+            NoHeaps = 0x40000000
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        public struct THREADENTRY32
+
+        {
+            internal UInt32 dwSize;
+            internal UInt32 cntUsage;
+            internal UInt32 th32ThreadID;
+            internal UInt32 th32OwnerProcessID;
+            internal UInt32 tpBasePri;
+            internal UInt32 tpDeltaPri;
+            internal UInt32 dwFlags;
+        }
+
+        //inner struct used only internally
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct PROCESSENTRY32
+        {
+            const int MAX_PATH = 260;
+            internal UInt32 dwSize;
+            internal UInt32 cntUsage;
+            internal UInt32 th32ProcessID;
+            internal IntPtr th32DefaultHeapID;
+            internal UInt32 th32ModuleID;
+            internal UInt32 cntThreads;
+            internal UInt32 th32ParentProcessID;
+            internal Int32 pcPriClassBase;
+            internal UInt32 dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = MAX_PATH)]
+            internal string szExeFile;
+        }
+
+        private struct GUITHREADINFO
+        {
+            public int cbSize;
+            public int flags;
+            public IntPtr hwndActive;
+            public IntPtr hwndFocus;
+            public IntPtr hwndCapture;
+            public IntPtr hwndMenuOwner;
+            public IntPtr hwndMoveSize;
+            public IntPtr hwndCaret;
+            public Rect rcCaret;
+        }
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
+
+
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr CreateToolhelp32Snapshot([In]UInt32 dwFlags, [In]UInt32 th32ProcessID);
+
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool Process32First([In]IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool Process32Next([In]IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+
+        [DllImport("kernel32.dll",SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool Thread32First(IntPtr hSnapshot, ref THREADENTRY32 lpte);
+        
+        [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+        static extern bool Thread32Next([In]IntPtr hSnapshot, ref THREADENTRY32 lppe);
+
+        [DllImport("kernel32", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CloseHandle([In] IntPtr hObject);
+
+        private static List<string> _FoundNames;
+        private delegate bool EnumThreadWndProc(IntPtr hWnd, IntPtr lp);
+
+        [DllImport("kernel32.dll", SetLastError =true, CharSet = CharSet.Unicode)]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll", SetLastError =true, CharSet = CharSet.Unicode)]
+        private static extern bool EnumThreadWindows(int tid, EnumThreadWndProc callback, IntPtr lp);
+
+        [DllImport("user32.dll", SetLastError =true, CharSet = CharSet.Unicode)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder buffer, int len);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string lpszClass, string lpszWindow);
 
 
         [DllImport(DllFile, EntryPoint = "AU3_Init", CharSet = CharSet.Unicode)]
@@ -229,8 +328,13 @@ namespace AutoITApi
         [DllImport(DllFile, EntryPoint = "AU3_Shutdown", CharSet = CharSet.Unicode)]
         public static extern int Shutdown(int nFlags);
 
-        [DllImport(DllFile, EntryPoint = "AU3_AutoItSetOption", CharSet = CharSet.Unicode)]
-        public static extern void Sleep(int nMilliseconds);
+        //[DllImport(DllFile, EntryPoint = "AU3_AutoItSetOption", CharSet = CharSet.Unicode)]
+        //public static extern void Sleep(int nMilliseconds);
+
+        public static void Sleep(int nMillisecons)
+        {
+            System.Threading.Thread.Sleep(nMillisecons);
+        }
 
         [DllImport(DllFile, EntryPoint = "AU3_StatusbarGetText", CharSet = CharSet.Unicode)]
         public static extern int StatusbarGetText(string szTitle, string szText, int nPart, string szStatusText,
@@ -393,5 +497,112 @@ namespace AutoITApi
 
         [DllImport(DllFile, EntryPoint = "AU3_WinWaitNotActiveByHandle", CharSet = CharSet.Unicode)]
         public static extern int WinWaitNotActiveByHandle(IntPtr hWnd, int nTimeout = 0);
+
+        public static int GetMainThreadIdFromProcessId(int procId)
+        {
+            IntPtr handleToSnapshot = IntPtr.Zero;
+            uint threadId = 0;
+            try
+            {
+                THREADENTRY32 procEntry = new THREADENTRY32();
+                procEntry.dwSize = (UInt32)Marshal.SizeOf(typeof(THREADENTRY32));
+                handleToSnapshot = CreateToolhelp32Snapshot((uint)SnapshotFlags.Thread, 0);
+                if (Thread32First(handleToSnapshot, ref procEntry))
+                {
+                    do
+                    {
+                        if (procId == (int)procEntry.th32OwnerProcessID)
+                        {
+
+                            threadId = procEntry.th32ThreadID;
+                            break;
+                        }
+                    } while (Thread32Next(handleToSnapshot, ref procEntry));
+                }
+                else
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+            }
+            catch (Exception e)
+            {
+                throw new ApplicationException("Can't find thread.", e);
+            }
+            finally
+            {
+                CloseHandle(handleToSnapshot);
+            }
+
+            return (int)threadId;
+        }
+
+
+        public static IntPtr GetActiveProcessWindow(int processId)
+        {
+            int threadId = GetMainThreadIdFromProcessId(processId);
+            return GetActiveThreadWindow(threadId);
+        }
+        public static IntPtr GetActiveThreadWindow(int threadId)
+        {
+            GUITHREADINFO threadInfo = new GUITHREADINFO();
+            threadInfo.cbSize = Marshal.SizeOf(typeof(GUITHREADINFO));
+            if (!GetGUIThreadInfo((uint) threadId, ref threadInfo))
+            {
+                throw new ApplicationException("Can't get handle. Error:"  ,new Win32Exception(Marshal.GetLastWin32Error()));
+            }
+                
+            return threadInfo.hwndActive;
+        }
+
+        public static string[] GetThreadWindowClasses(int processId)
+        {
+            int threadId = GetMainThreadIdFromProcessId(processId);
+            if (_FoundNames == null)
+                _FoundNames = new List<string>();
+            _FoundNames.Clear();
+            EnumThreadWndProc callBack = EnumThreadWndProcClassesImpl;
+            bool retVal = EnumThreadWindows(threadId, callBack, IntPtr.Zero);
+            if (retVal)
+                return _FoundNames.ToArray();
+            return null;
+        }
+
+        public static string[] GetThreadWindowTitles(int processId)
+        {
+            int threadId = GetMainThreadIdFromProcessId(processId);
+
+            if(_FoundNames == null)
+                _FoundNames = new List<string>();
+            _FoundNames.Clear();
+            EnumThreadWndProc callBack = EnumThreadWndProcImpl;
+            bool retVal = EnumThreadWindows(threadId, callBack, IntPtr.Zero);
+            if (retVal)
+            {
+                return _FoundNames.ToArray();
+            }
+            return null;
+        }
+
+        private static bool EnumThreadWndProcClassesImpl(IntPtr hwnd, IntPtr lp)
+        {
+            StringBuilder sb = new StringBuilder(260);
+            GetClassName(hwnd, sb, sb.Capacity);
+            _FoundNames.Add(sb.ToString());
+            return true;
+        }
+        private static bool EnumThreadWndProcImpl(IntPtr hwnd, IntPtr lp)
+        {
+            string title =new string('\0',260) ;
+
+            WinGetTitleByHandle(hwnd, title, 255);
+            _FoundNames.Add(title);
+            return true;
+        }
+
+        public static IntPtr GetHandleByClassName(string className)
+        {
+            IntPtr hWnd = FindWindowEx(IntPtr.Zero, IntPtr.Zero, className, null);
+            return hWnd;
+        }
     }
 }
